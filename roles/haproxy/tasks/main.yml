@@ -1,0 +1,34 @@
+---
+- name: Install haproxy.
+  package:
+    name:
+      - haproxy
+    state: latest
+  become: yes
+
+- name: "Transfer active_urls list for Haproxy filter."
+  copy:
+    src: active_urls.txt
+    dest: "/etc/haproxy/active_urls.txt"
+    force: no
+  become: yes
+
+- name: "Transfer custom Haproxy config"
+  copy:
+    src: haproxy.cfg
+    dest: "/etc/haproxy/haproxy.cfg"
+  become: yes
+
+- name: Enable haproxy on startup via systemd.
+  systemd:
+    name: haproxy
+    enabled: yes
+    masked: no
+  become: yes
+
+- name: Make sure haproxy is running.
+  systemd:
+    name: haproxy
+    state: started
+  become: yes
+

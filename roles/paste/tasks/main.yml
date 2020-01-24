@@ -1,0 +1,114 @@
+---
+# Sets up linx pastebin on target server.
+
+- name: "Change hosthame for pasteserver"
+  hostname:
+    name: "paste"
+  become: yes
+
+- name: "Get our latest Linx distribution from git"
+  git:
+    repo: 'https://github.com/virtualsnow/linx-server'
+    dest: "{{ local_git_dir_linx }}"
+    force: yes
+
+- name: "Get latest txtsx templates from git"
+  git:
+    repo: 'https://github.com/virtualsnow/txtsx-template'
+    dest: "{{ local_git_dir_templates }}"
+    force: yes
+
+- name: "Clean default templates from Linx"
+  file:
+    state: absent
+    path: "{{ local_git_dir_linx }}/templates"
+
+- name: "Clean default static (css/js) from Linx"
+  file:
+    state: absent
+    path: "{{ local_git_dir_linx }}/static"
+
+#Dockerfile doesn't appreciate symlinks, so need to do a real copy.
+- name: "Apply custom themes to Linx from txtsx-template.git"
+  copy:
+    src:  "{{ local_git_dir_templates }}/templates"
+    dest: "{{ local_git_dir_linx }}"
+    remote_src : yes
+
+#Dockerfile doesn't appreciate symlinks, so need to do a real copy.
+- name: "Apply custom static (css/js) to Linx from txtsx-template.git"
+  copy:
+    src:  "{{ local_git_dir_templates }}/static"
+    dest: "{{ local_git_dir_linx }}"
+    remote_src : yes
+
+- name: "Transfer custom Linx Dockerfile."
+  copy:
+    src: Dockerfile
+    dest: "{{ local_git_dir_linx }}/Dockerfile"
+
+- name: "Transfer custom Linx configuration ini."
+  copy:
+    src: conf.ini
+    dest: "{{ local_git_dir_linx }}/conf.ini"
+
+
+- name: "Build Linx docker image"
+  docker_image:
+    name: linx
+    build:
+      path: "{{ local_git_dir_linx }}"
+      pull: yes
+    source: build
+    #Unfortunately, if it is not forced, it fails to update on changes.
+    #Caching alpine-nginx may be useful.
+    force_source: yes
+
+- name: "Create directory for docker volume storage."
+  file:
+    path: /home/ansible/docker-volumes/linx-paste/
+    state: directory
+
+
+- name: "Create persistent storage for paste server.(files)"
+  file:
+    path: /home/ansible/docker-volumes/linx-paste/files
+    state: directory
+    owner: nobody
+    group: nogroup
+  become: yes
+
+- name: "Create persistent storage for paste server.(meta)"
+  file:
+    path: /home/ansible/docker-volumes/linx-paste/meta
+    state: directory
+    owner: nobody
+    group: nogroup
+  become: yes
+
+
+- name: "Start or restart  linx_paste docker.  Expose 8080:8080 and mount persist vols."
+  docker_container:
+    name: linx_paste
+    image: linx
+    state: started
+    restart: yes
+    published_ports: 127.0.0.1:9092:8080
+    volumes:
+      - /home/ansible/docker-volumes/linx-paste/files:/data/files
+      - /home/ansible/docker-volumes/linx-paste/meta:/data/meta
+
+
+- name: "Check if running Haproxy."
+  stat: 
+    path: /etc/haproxy/haproxy.cfg
+  register: running_haproxy
+
+
+- name: "Let haproxy know about this backend, if Haproxy is available."
+  lineinfile:
+    path: /etc/haproxy/active_urls.txt
+    line: "paste.txt.sx"
+    create: yes
+  become: yes
+  when: running_haproxy is succeeded

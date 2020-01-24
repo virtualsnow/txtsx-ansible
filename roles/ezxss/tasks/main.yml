@@ -1,0 +1,107 @@
+---
+# Sets up solo ezxss instance inside a docker instance.
+
+- name: "Get our latest ezxss distribution from git"
+  git:
+    repo: 'https://github.com/ssl/ezXSS.git'
+    dest: "{{ local_git_dir_ezxss }}"
+    force: yes
+
+- name: "Transfer custom ezxss Dockerfile."
+  copy:
+    src: Dockerfile
+    dest: "{{ local_git_dir_ezxss }}/Dockerfile"
+
+- name: "Transfer custom Apache2 Configuration File (AllowOverride /var/www/html)."
+  copy:
+    src: apache2.conf
+    dest: "{{ local_git_dir_ezxss }}/apache2.conf"
+
+
+- name: "Set ezxss Database Host"
+  lineinfile:
+    path: "{{ local_git_dir_ezxss }}/src/Database.php"
+    regexp: ^(\s)*private \$databaseHost =
+    line: "private $databaseHost = 'mysql_ezxss';"
+
+
+- name: "Set ezxss Database User"
+  lineinfile:
+    path: "{{ local_git_dir_ezxss }}/src/Database.php"
+    regexp: ^(\s)*private \$databaseUser =
+    line: "private $databaseUser = '{{ mysql_ezxss_user }}';"
+
+
+- name: "Set ezxss Database Password"
+  lineinfile:
+    path: "{{ local_git_dir_ezxss }}/src/Database.php"
+    regexp: ^(\s)*private \$databasePassword =
+    line: "private $databasePassword = '{{ mysql_ezxss_pass }}';"
+
+- name: "Set ezxss Database Name"
+  lineinfile:
+    path: "{{ local_git_dir_ezxss }}/src/Database.php"
+    regexp: ^(\s)*private \$databaseName =
+    line: "private $databaseName = '{{ mysql_ezxss_user }}';"
+
+- name: "Create a docker network for the mysql and ezxss instance"
+  docker_network:
+    name: xss_net
+
+- name: "Spin up a mysql docker image for ezxss to use"
+  docker_container:
+    name: mysql-ezxss
+    image: mysql
+    state: started
+    restart: yes
+    # published_ports: 5432:5432
+    networks:
+      - name: xss_net
+        aliases:
+          - mysql_ezxss
+    #todo May want to link and pass in volume so db is stored outside container.
+    env:
+      MYSQL_ROOT_PASSWORD="{{ mysql_ezxss_pass }}"
+      MYSQL_USER="{{ mysql_ezxss_user }}"
+      MYSQL_PASSWORD="{{ mysql_ezxss_pass }}"
+      MYSQL_DATABASE="{{ mysql_ezxss_user }}"
+
+
+- name: "Build ezxss docker image"
+  docker_image:
+    name: ezxss
+    build:
+      path: "{{ local_git_dir_ezxss }}"
+      pull: yes
+    source: build
+    #Unfortunately, if it is not forced, it fails to update on changes.
+    force_source: yes
+
+- name: "Start or restart ezxss docker.  Expose port 9094 on localhost and connect to bridge network (xss_net) so mysql can be reached."
+  docker_container:
+    name: ezxss
+    image: ezxss
+    state: started
+    restart: yes
+    networks:
+      - name: xss_net
+        aliases:
+          - ezxss
+    published_ports: 127.0.0.1:9094:80
+
+
+- name: "Check if running Haproxy."
+  stat: 
+    path: /etc/haproxy/haproxy.cfg
+  register: running_haproxy
+
+
+- name: "Let haproxy know about this backend, if Haproxy is available."
+  lineinfile:
+    path: /etc/haproxy/active_urls.txt
+    line: "x.txt.sx"
+    create: yes
+  become: yes
+  when: running_haproxy is succeeded
+
+

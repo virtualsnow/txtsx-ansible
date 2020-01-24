@@ -1,0 +1,14 @@
+---
+- name: Install QoL packages.
+  package:
+    name:
+      - vim
+      - screen
+      - git
+      - python3
+      - python3-pip
+    state: latest
+  become: yes
+
+
+

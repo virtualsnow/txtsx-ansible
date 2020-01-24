@@ -1,0 +1,3 @@
+---
+local_git_dir : /home/ansible/readme
+git_url : 'git@github.com:virtualsnow/readme.txt.sx.git'

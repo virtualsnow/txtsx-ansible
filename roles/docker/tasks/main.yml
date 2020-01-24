@@ -1,0 +1,43 @@
+---
+
+- name: Install Docker
+  package:
+    name:
+      - docker.io
+      - python3
+      - python3-pip
+    state: latest
+  become: yes
+
+- name: Install Python Docker Bindings via pip
+  pip:
+    name:
+      - docker
+
+- name: Make sure docker group exists.
+  group:
+    name: docker
+    state: present
+  become: yes
+
+- name: Add ansible user to docker group.
+  user:
+    name: ansible
+    groups: docker
+    append: yes
+  become: yes
+
+- name: enable docker on startup via systemd
+  systemd:
+    name: docker
+    enabled: yes
+    masked: no
+  become: yes
+
+- name: make sure docker is running.
+  systemd:
+    name: docker
+    state: started
+  become: yes
+
+

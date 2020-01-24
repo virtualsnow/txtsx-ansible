@@ -1,0 +1,83 @@
+---
+# Hosts readme.txt.sx, a statically generated blog using Pelican and themed to txt.sx.
+
+- name: Make sure dependencies are installed.
+  package:
+    name:
+      - python3
+      - python3-pip
+      - git
+    state: latest
+  become: yes
+
+- name: Install Python libraries via pip.
+  pip:
+    name:
+      - pelican
+      - markdown
+
+# TODO: only accept signed commits. (verify_commit)
+- name: Fetch blog posts via git, also fetch theme submodule.
+  git:
+    repo: "{{ git_url }}"
+    dest: "{{ local_git_dir }}"
+    track_submodules: yes
+    accept_hostkey: yes
+    force: yes
+  become: no
+
+# Once we are rolling, relative-urls flag should
+# be dropped since it can impact SEO and RSS feeds.
+# Not important, though, and easier to dev with it
+# included.
+- name: Compile static blog via Pelican.
+  shell:
+    cmd: "/home/ansible/.local/bin/pelican content --relative-urls"
+    chdir: "{{ local_git_dir }}/archives"
+    executable: /bin/bash
+    # creates: /path/to/database
+
+- name: Transfer nginx_readme dockerfile.
+  copy:
+    src: Dockerfile
+    dest: "{{ local_git_dir }}/archives/Dockerfile"
+
+- name: Transfer nginx_readme custom configuration.
+  copy:
+    src: nginx.conf
+    dest: "{{ local_git_dir }}/archives/nginx.conf"
+
+
+- name: "Build nginx_readme docker image"
+  docker_image:
+    name: nginx_readme
+    build:
+      path: "{{ local_git_dir }}/archives"
+      pull: yes
+    source: build
+    #Unfortunately, if it is not forced, it fails to update on changes.
+    #Caching alpine-nginx may be useful.
+    force_source: yes
+
+- name: "Start/restart nginx_readme container.  Expose container port 80 to 8082 on localhost."
+  docker_container:
+    name: nginx_readme
+    image: nginx_readme
+    state: started
+    restart: yes
+    published_ports: 127.0.0.1:9091:80
+    
+    
+- name: "Check if running Haproxy."
+  stat: 
+    path: /etc/haproxy/haproxy.cfg
+  register: running_haproxy
+
+
+- name: "Let Haproxy know about this backend, if Haproxy is available."
+  lineinfile:
+    path: /etc/haproxy/active_urls.txt
+    line: "readme.txt.sx"
+    create: yes
+  become: yes
+  when: running_haproxy is succeeded

@@ -1,0 +1,16 @@
+.DS_Store
+
+# Ansible retry
+*.retry
+
+# Ansible Vault
+vault
+
+# Ansible Vault Password file
+.vault_pass
+
+# Ansible configuration
+ansible.cfg
+
+# production file
+production

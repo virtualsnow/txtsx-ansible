@@ -1,0 +1,3 @@
+---
+local_git_dir_linx : /home/ansible/linx-server
+local_git_dir_templates : /home/ansible/txtsx-template

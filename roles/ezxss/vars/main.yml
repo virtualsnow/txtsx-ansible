@@ -1,0 +1,4 @@
+---
+local_git_dir_ezxss : /home/ansible/ezxss
+mysql_ezxss_user: "ezxss"
+mysql_ezxss_pass: "replaceme_48gzy3WVapDxbgBkxhlTjw"

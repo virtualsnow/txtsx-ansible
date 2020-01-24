@@ -1,0 +1,35 @@
+- hosts: paste
+  vars_files:
+    - vault
+  roles:
+    - common
+    - haproxy
+    - docker
+    - paste
+
+- hosts: directory
+  vars_files:
+    - vault
+  roles:
+    - common
+    - haproxy
+    - docker
+    - directory
+
+- hosts: readme
+  vars_files:
+    - vault
+  roles:
+    - common
+    - haproxy
+    - docker
+    - readme
+
+- hosts: ezxss
+  vars_files:
+    - vault
+  roles:
+    - common
+    - haproxy
+    - docker
+    - ezxss
