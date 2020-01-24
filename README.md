@@ -1,4 +1,4 @@
-#Ansible to construct txt.sx infrastructure
+# Ansible to construct txt.sx infrastructure
 
 Duplicates all of the infrastructure at `txt.sx` with Ansible and Docker. More to come.
 
@@ -29,7 +29,7 @@ If you're pulling from __private repositories__, please see the appropriate sect
 
 
 ### Running
-- Checking the playbook for errors: `ansible-playbook site.yml --syntax-check`
+- Checking the playbook for errors: `ansible-playbook deploy.yml --syntax-check`
 - Copy `staging` inventory file to `production` and edit the contents to fit your architecture.
 	- `ansible-playbook deploy.yml` Runs with local ansible.cfg and default inventory file.
 	- `ansible-playbook deploy.yml --vault-password-file .vault_pass` Supplies vault password from file so you are not prompted.
@@ -50,7 +50,7 @@ You can customize the services by their configuration files, usually in `/roles/
 - For one vault, polymorph vars, change devvault identifier.
 - `ansible-vault create --vault-id devvault@prompt vaultfile.yml`
 - In tasks, `include_vars: vault` or any other vaultfile, to access vault contents.
-- Use double curly brace to reference vaultfile variables. "{{ somesecret }}"
+- Use double curly brace to reference vaultfile variables. `"{{ somesecret }}"`
 - Run:
 	- `ansible-playbook deploy.yml --vault-password-file .vault_pass`
 	- `ansible-playbook deploy.yml --vault-password-file .vault_pass --start-at-task "sometask"`
@@ -79,8 +79,3 @@ To integrate SSH agent forwarding to Ansible:
 - mysql image initialization bug
 - pull all txt.sx specific content to vars.
 
-
-Ansible/Docker further reading::
-- https://linuxhint.com/ansible-roles-tutorial/
-- https://www.tecmint.com/use-ansible-vault-in-playbooks-to-protect-sensitive-data/
-- https://gist.github.com/tristanfisher/e5a306144a637dc739e7
